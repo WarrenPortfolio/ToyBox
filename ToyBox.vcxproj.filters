@@ -1,0 +1,85 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Graphics">
+      <UniqueIdentifier>{63220e63-2466-441d-a0a8-e4008e3b1d54}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application">
+      <UniqueIdentifier>{6316456f-beb0-40f4-9bff-482a630fb712}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..%255cContrib">
+      <UniqueIdentifier>{a5f2c9d9-17f8-4133-9a89-78e8cc84ed85}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..%255cContrib\ImGui">
+      <UniqueIdentifier>{721c39f3-053b-45db-b7e2-383982f74a78}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..%255cContrib\ImGui\examples">
+      <UniqueIdentifier>{e5ef3046-d9e8-4127-b15f-10764184dd73}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Source\Application\Application.cpp">
+      <Filter>Application</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\Renderer.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\Scene.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\main.cpp" />
+    <ClCompile Include="Contrib\imgui\imgui.cpp">
+      <Filter>..%255cContrib\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Contrib\imgui\imgui_demo.cpp">
+      <Filter>..%255cContrib\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Contrib\imgui\imgui_draw.cpp">
+      <Filter>..%255cContrib\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Contrib\imgui\imgui_widgets.cpp">
+      <Filter>..%255cContrib\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Contrib\imgui\examples\imgui_impl_glfw.cpp">
+      <Filter>..%255cContrib\ImGui\examples</Filter>
+    </ClCompile>
+    <ClCompile Include="Contrib\imgui\examples\imgui_impl_vulkan.cpp">
+      <Filter>..%255cContrib\ImGui\examples</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Source\Application\Application.h">
+      <Filter>Application</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Graphics\Renderer.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Graphics\Scene.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Contrib\imgui\imconfig.h">
+      <Filter>..%255cContrib\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Contrib\imgui\imgui.h">
+      <Filter>..%255cContrib\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Contrib\imgui\imgui_internal.h">
+      <Filter>..%255cContrib\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Contrib\imgui\imstb_rectpack.h">
+      <Filter>..%255cContrib\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Contrib\imgui\imstb_textedit.h">
+      <Filter>..%255cContrib\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Contrib\imgui\imstb_truetype.h">
+      <Filter>..%255cContrib\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Contrib\imgui\examples\imgui_impl_vulkan.h">
+      <Filter>..%255cContrib\ImGui\examples</Filter>
+    </ClInclude>
+    <ClInclude Include="Contrib\imgui\examples\imgui_impl_glfw.h">
+      <Filter>..%255cContrib\ImGui\examples</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

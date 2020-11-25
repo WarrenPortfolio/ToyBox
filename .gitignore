@@ -1,0 +1,21 @@
+# Ignore Build Directory
+Build/*
+
+# Ignore Visual Studio File & Directory
+.vs/*
+*.vcxproj.user
+
+# Ignore Build Shaders
+*.spv
+
+# Ignore ImGui Settings
+imgui.ini
+
+# Ignore Thumbs.db
+*/Thumbs.db
+
+# Ignore Blender backup files
+*.blend1
+
+# Ingnore Gimp files
+*.xcf
