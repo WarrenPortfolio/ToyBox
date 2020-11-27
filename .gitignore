@@ -2,7 +2,7 @@
 Build/*
 
 # Ignore Visual Studio File & Directory
-.vs/*
+**/.vs/*
 *.vcxproj.user
 
 # Ignore Build Shaders

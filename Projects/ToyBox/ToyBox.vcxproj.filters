@@ -16,6 +16,15 @@
     <Filter Include="..%255cContrib\ImGui\examples">
       <UniqueIdentifier>{e5ef3046-d9e8-4127-b15f-10764184dd73}</UniqueIdentifier>
     </Filter>
+    <Filter Include="..%255cContrib\ImGui\misc">
+      <UniqueIdentifier>{e526878a-2160-4ecb-8a8c-81d82685d3f3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..%255cContrib\ImGui\misc\natvis">
+      <UniqueIdentifier>{412cb9b4-ff78-402f-865f-dbca1cafaa01}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..%255cContrib\ImGui\misc\cpp">
+      <UniqueIdentifier>{44546b3b-5008-46c3-a713-d1ee167259b5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Application\Application.cpp">
@@ -28,23 +37,26 @@
       <Filter>Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Source\main.cpp" />
-    <ClCompile Include="Contrib\imgui\imgui.cpp">
+    <ClCompile Include="..\..\Contrib\imgui\imgui.cpp">
       <Filter>..%255cContrib\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Contrib\imgui\imgui_demo.cpp">
+    <ClCompile Include="..\..\Contrib\imgui\imgui_demo.cpp">
       <Filter>..%255cContrib\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Contrib\imgui\imgui_draw.cpp">
+    <ClCompile Include="..\..\Contrib\imgui\imgui_draw.cpp">
       <Filter>..%255cContrib\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Contrib\imgui\imgui_widgets.cpp">
+    <ClCompile Include="..\..\Contrib\imgui\imgui_widgets.cpp">
       <Filter>..%255cContrib\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Contrib\imgui\examples\imgui_impl_glfw.cpp">
+    <ClCompile Include="..\..\Contrib\imgui\examples\imgui_impl_glfw.cpp">
       <Filter>..%255cContrib\ImGui\examples</Filter>
     </ClCompile>
-    <ClCompile Include="Contrib\imgui\examples\imgui_impl_vulkan.cpp">
+    <ClCompile Include="..\..\Contrib\imgui\examples\imgui_impl_vulkan.cpp">
       <Filter>..%255cContrib\ImGui\examples</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Contrib\imgui\misc\cpp\imgui_stdlib.cpp">
+      <Filter>..%255cContrib\ImGui\misc\cpp</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -57,29 +69,37 @@
     <ClInclude Include="Source\Graphics\Scene.h">
       <Filter>Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="Contrib\imgui\imconfig.h">
+    <ClInclude Include="..\..\Contrib\imgui\imconfig.h">
       <Filter>..%255cContrib\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="Contrib\imgui\imgui.h">
+    <ClInclude Include="..\..\Contrib\imgui\imgui.h">
       <Filter>..%255cContrib\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="Contrib\imgui\imgui_internal.h">
+    <ClInclude Include="..\..\Contrib\imgui\imgui_internal.h">
       <Filter>..%255cContrib\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="Contrib\imgui\imstb_rectpack.h">
+    <ClInclude Include="..\..\Contrib\imgui\imstb_rectpack.h">
       <Filter>..%255cContrib\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="Contrib\imgui\imstb_textedit.h">
+    <ClInclude Include="..\..\Contrib\imgui\imstb_textedit.h">
       <Filter>..%255cContrib\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="Contrib\imgui\imstb_truetype.h">
+    <ClInclude Include="..\..\Contrib\imgui\imstb_truetype.h">
       <Filter>..%255cContrib\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="Contrib\imgui\examples\imgui_impl_vulkan.h">
+    <ClInclude Include="..\..\Contrib\imgui\examples\imgui_impl_glfw.h">
       <Filter>..%255cContrib\ImGui\examples</Filter>
     </ClInclude>
-    <ClInclude Include="Contrib\imgui\examples\imgui_impl_glfw.h">
+    <ClInclude Include="..\..\Contrib\imgui\examples\imgui_impl_vulkan.h">
       <Filter>..%255cContrib\ImGui\examples</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Contrib\imgui\misc\cpp\imgui_stdlib.h">
+      <Filter>..%255cContrib\ImGui\misc\cpp</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="..\..\Contrib\imgui\misc\natvis\imgui.natvis">
+      <Filter>..%255cContrib\ImGui\misc\natvis</Filter>
+    </Natvis>
   </ItemGroup>
 </Project>

@@ -7,6 +7,10 @@
     </BuildDependsOn>
   </PropertyGroup>
 
+  <PropertyGroup Label="Globals">
+    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
+  </PropertyGroup>
+  
   <PropertyGroup>
     <ShaderDataDir>$(SolutionDir)\Data\Shaders</ShaderDataDir>
   </PropertyGroup>

@@ -1,0 +1,11 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <ContribImGuiDir>$(Config_ContribDir)imgui</ContribImGuiDir>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Configuration">
+    <IncludePath>$(Config_ContribDir)imgui;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+
+</Project>

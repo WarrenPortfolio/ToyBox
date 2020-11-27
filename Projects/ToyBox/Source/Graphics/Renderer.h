@@ -51,10 +51,11 @@ public:
 	void Startup();
 	void Shutdown();
 
-	void DrawFrame();
+	void FrameUpdate(float deltaTime);
+	void FrameRender();
+	void FramePresent();
 
 private:
-	GLFWwindow* mWindow = nullptr;
 
 	VkDebugReportCallbackEXT mCallbackExt;
 
@@ -95,7 +96,8 @@ private:
 
 	std::vector<VkCommandBuffer> mCommandBuffers;
 
-	size_t mCurrentFrame = 0;
+	uint32_t mCurrentFrame = 0;
+	uint32_t imageIndex = 0;
 
 	struct FrameData
 	{

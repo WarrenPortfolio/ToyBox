@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Framework">
+      <UniqueIdentifier>{9e27576e-7ed3-4572-8327-47de7486e8cc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Framework.Debug">
+      <UniqueIdentifier>{9c2a7931-c234-4cf6-9ca0-83f2ea21c757}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Framework.Debug\Platform.Windows">
+      <UniqueIdentifier>{3a38388d-919f-4a13-9084-ee19f22faf1c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Framework.Text">
+      <UniqueIdentifier>{0369ef24-9053-4127-ab84-0f82dd2eea85}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Framework.Text\Platform.WIndows">
+      <UniqueIdentifier>{751d198b-fd6b-425e-99f2-3ca13b8b0e83}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Source\Framework\Hash.cpp">
+      <Filter>Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Framework.Text\Text.cpp">
+      <Filter>Framework.Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Framework.Text\Platform.Windows\Text.Windows.cpp">
+      <Filter>Framework.Text\Platform.WIndows</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Framework.Debug\Platform.Windows\Logger.Windows.cpp">
+      <Filter>Framework.Debug\Platform.Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Framework.Debug\Logger.cpp">
+      <Filter>Framework.Debug</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Source\Framework\Hash.h">
+      <Filter>Framework</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Framework.Debug\Logger.h">
+      <Filter>Framework.Debug</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Framework.Text\Text.h">
+      <Filter>Framework.Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Framework.Debug\Debug.h">
+      <Filter>Framework.Debug</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

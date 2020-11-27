@@ -1,5 +1,7 @@
 #include "Scene.h"
 
+#include <Framework.Debug/Debug.h>
+
 #include <fbxsdk.h>
 #include <glm/glm.hpp>
 
@@ -17,10 +19,7 @@ std::unique_ptr<Texture> Texture::Load(const char* filePath)
 {
 	int texWidth, texHeight, texChannels;
 	stbi_uc* pixels = stbi_load(filePath, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-	if (!pixels)
-	{
-		throw std::runtime_error("failed to load texture image!");
-	}
+	Debug_AssertMsg(pixels != nullptr, "failed to load texture image!");
 
 	std::unique_ptr<Texture> texture = std::make_unique<Texture>();
 	texture->TextureWidth = texWidth;
@@ -228,7 +227,7 @@ static void BuildResources(Scene& scene, fbxsdk::FbxScene* fbxScene, fbxsdk::Fbx
 				}
 				else
 				{
-					throw std::runtime_error("failed to get normal");
+					Debug_AssertMsg(false, "failed to get normal");
 				}
 
 				// Save the UV
@@ -353,12 +352,12 @@ std::unique_ptr<Scene> Scene::Load(const char* filePath)
 		}
 		else
 		{
-			throw std::runtime_error("failed to import scene");
+			Debug_AssertMsg(false, "failed to import scene");
 		}
 	}
 	else
 	{
-		throw std::runtime_error("failed to initialize impoter");
+		Debug_AssertMsg(false, "failed to initialize impoter");
 	}
 
 	// Destroy the importer to release the file.

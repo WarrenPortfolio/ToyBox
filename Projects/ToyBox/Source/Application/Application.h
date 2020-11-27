@@ -1,5 +1,7 @@
 #pragma once
 
+struct GLFWwindow;
+
 class Application
 {
 public:
@@ -9,6 +11,8 @@ public:
 	void Run();
 	void Shutdown();
 
+	GLFWwindow* MainWindow() const { return mMainWindow; }
+
 private:
 	Application() = default;
 	Application(const Application&) = delete;
@@ -16,4 +20,5 @@ private:
 
 private:
 	bool mShouldExit = false;
+	GLFWwindow* mMainWindow = nullptr;
 };

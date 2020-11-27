@@ -1,6 +1,6 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
-  <PropertyGroup>
+  <PropertyGroup Label="Configuration">
     <OutDir>$(SolutionDir)Build\</OutDir>
     <IntDir>$(SolutionDir)Build\int\$(ProjectName)_$(Platform)_$(Configuration)\</IntDir>
     <IncludePath>$(ProjectDir)Source;$(IncludePath)</IncludePath>
@@ -8,25 +8,15 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <ContribDir>$(SolutionDir)Contrib\</ContribDir>
-    
-    <VulkanSdkDir>$(VULKAN_SDK)</VulkanSdkDir>
-    <FbxSdkDir>$(FBX_SDK)</FbxSdkDir>
-    <glmSdkDir>$(ContribDir)glm</glmSdkDir>
-    <glfwSdkDir>$(ContribDir)glfw</glfwSdkDir>
-    <stbSdkDir>$(ContribDir)stb</stbSdkDir>
-    <imguiSdkDir>$(ContribDir)imgui</imguiSdkDir>
-    <renderDocSdkDir>$(ContribDir)renderdoc</renderDocSdkDir>
+    <PublicIncludeDirectories>$(ProjectDir)Source;$(PublicIncludeDirectories)</PublicIncludeDirectories>
   </PropertyGroup>
 
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(glmSdkDir);$(stbSdkDir);$(glfwSdkDir)\Include;$(FbxSdkDir)\include;$(imguiSdkDir);$(VulkanSdkDir)\Include;$(renderDocSdkDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <ExceptionHandling>false</ExceptionHandling>
+      <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;_HAS_EXCEPTIONS=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-    <Link>
-      <AdditionalDependencies>glfw3.lib;vulkan-1.lib;libfbxsdk-md.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(VulkanSdkDir)\Lib;$(glfwSdkDir)\lib-vc2015;$(FbxSdkDir)\lib\vs2015\x64\release;%(AdditionalIncludeDirectories)</AdditionalLibraryDirectories>
-    </Link>
   </ItemDefinitionGroup>
 
 </Project>
