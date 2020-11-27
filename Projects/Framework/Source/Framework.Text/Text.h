@@ -34,7 +34,7 @@ namespace W
 			}
 
 			template <int N>
-			void Decode(const char* str, wchar_t( &outBuffer)[N])
+			void Decode(const char* str, wchar_t(&outBuffer)[N])
 			{
 				Decode(str, outBuffer, N);
 			}

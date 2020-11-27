@@ -1109,7 +1109,7 @@ void Renderer::GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texW
 	VkFormatProperties formatProperties;
 	vkGetPhysicalDeviceFormatProperties(mPhysicalDevice, imageFormat, &formatProperties);
 
-	Debug_AssertMsg(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT,"texture image format does not support linear blitting!");
+	Debug_AssertMsg(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT, "texture image format does not support linear blitting!");
 
 	VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
 
