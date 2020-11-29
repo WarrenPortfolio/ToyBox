@@ -6,8 +6,17 @@ layout(binding = 0) uniform UniformBufferObject {
     mat4 view;
     mat4 proj;
     vec3 cameraPosition;
+    
     float ambientLightIntensity;
     vec3  ambientLightColor;
+    
+    float directionalLightIntensity;
+    vec3  directionalLightColor;
+    vec3  directionalLightDirection;
+
+    vec3  materialColor;
+    vec3  materialSpecularColor;
+    float materialRoughness;
 } ubo;
 
 layout(location = 0) in vec3 inPosition;

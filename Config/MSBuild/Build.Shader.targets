@@ -1,10 +1,7 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
   <PropertyGroup>
-    <BuildDependsOn>
-      $(BuildDependsOn);
-      BuildShadersTarget;
-    </BuildDependsOn>
+    <BuildDependsOn>$(BuildDependsOn);BuildShadersTarget;</BuildDependsOn>
   </PropertyGroup>
 
   <PropertyGroup Label="Globals">
@@ -22,7 +19,7 @@
 
   <Target Name="BuildShadersTarget" Inputs="@(ShaderFile)" Outputs="@(ShaderFile->'%(RelativeDir)%(Filename)%(Extension).spv')">
     <Message Text="Building Shaders: '@(ShaderFile)'" Importance="High"/>
-    <Exec Command="$(VulkanSdkDir)\Bin\glslangValidator.exe -V -o @(ShaderFile->'%(RelativeDir)%(Filename)%(Extension).spv') %(ShaderFile.FullPath)" WorkingDirectory="%(RootDir)%(Directory)" />
+    <Exec Command="$(VULKAN_SDK)\Bin\glslangValidator.exe -V -o @(ShaderFile->'%(RelativeDir)%(Filename)%(Extension).spv') %(ShaderFile.FullPath)" WorkingDirectory="%(RootDir)%(Directory)" />
   </Target>
 
 </Project>

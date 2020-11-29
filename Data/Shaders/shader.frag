@@ -6,8 +6,17 @@ layout(binding = 0) uniform UniformBufferObject {
     mat4 view;
     mat4 proj;
     vec3 cameraPosition;
+    
     float ambientLightIntensity;
     vec3  ambientLightColor;
+    
+    float directionalLightIntensity;
+    vec3  directionalLightColor;
+    vec3  directionalLightDirection;
+
+    vec3  materialColor;
+    vec3  materialSpecularColor;
+    float materialRoughness;
 } ubo;
 
 layout(binding = 1) uniform sampler2D texSampler;
@@ -22,29 +31,30 @@ layout(location = 0) out vec4 outColor;
 void main()
 {
     // diffuse
-    vec4 diffuseColor = texture(texSampler, fragTexCoord);
-
+    vec4 diffuseColor       = texture(texSampler, fragTexCoord);
+    diffuseColor.xyz        = diffuseColor.xyz * ubo.materialColor;
+    
     // normal
-    vec3 normal = normalize(fragNormal);
+    vec3 normal             = normalize(fragNormal);
 
     // ambient lighting
-    vec3    ambientColor    = ubo.ambientLightIntensity * ubo.ambientLightColor;
+    vec3    ambientColor    = ubo.ambientLightColor * ubo.ambientLightIntensity;
 
     // light
-    vec3    lightColor      = vec3(1.0, 1.0, 1.0);
-    vec3    lightDir        = normalize(ubo.cameraPosition - fragPos);
+    vec3    lightColor      = ubo.directionalLightColor * ubo.directionalLightIntensity;
+    vec3    lightDir        = normalize(-ubo.directionalLightDirection);
     float   lightDifference = max(dot(normal, lightDir), 0.0);
     vec3    lightValue      = lightDifference * lightColor;
 
-    // specular highlight
-    float specularStrength  = 0.5;
-    float shininess         = 32;
+    // specular highlight (blinn-phong)
+    float shininess         = min(2048, max(0.001, (2.0 / pow(ubo.materialRoughness, 2))));
     vec3    viewPos         = ubo.cameraPosition;
     vec3    viewDir         = normalize(viewPos - fragPos);
-    vec3    reflectDir      = reflect(-lightDir, normal);
-    float   spec            = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
-    vec3    specularColor   = specularStrength * spec * lightColor;
+    vec3    halfDir         = normalize(lightDir + viewDir);
+    float   specAngle       = max(0.0, dot(halfDir, normal));
+    float   specular        = pow(specAngle,  shininess);
+    vec3    specularColor   = lightColor * ubo.materialSpecularColor * specular;
 
-    outColor = diffuseColor;
-    outColor.xyz = (ambientColor + lightValue + specularColor) * diffuseColor.xyz;
+    outColor.xyz            = (ambientColor + lightValue + specularColor) * diffuseColor.xyz;
+    outColor.a              = diffuseColor.a;
 }

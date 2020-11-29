@@ -37,6 +37,7 @@
 #include <Graphics/Scene.h>
 
 #include <Framework.Debug/Debug.h>
+#include <Framework.Graphics/Backend.Vulkan/Vulkan.h>
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -53,8 +54,6 @@ static constexpr bool enableValidationLayers = false;
 #else
 static constexpr bool s_enableValidationLayers = true;
 #endif
-
-#define VK_CHECK(expr) Debug_Assert(expr == VK_SUCCESS);
 
 //////////////////////////////////////////////////////////////////////////
 //                            File System                               //
@@ -79,12 +78,18 @@ static std::vector<char> ReadFile(const std::string& filePath)
 //////////////////////////////////////////////////////////////////////////
 static VkClearColorValue s_BackgroundColor = { 0.0f, 0.0f, 0.0f, 1.0f };
 
-static float s_AmbientColor[3] = { 0.13f, 0.17f, 0.19f };
-static float s_AmbientIntensity = 0.5f;
+static float s_AmbientLightColor[3] = { 0.13f, 0.17f, 0.19f };
+static float s_AmbientLightIntensity = 0.3f;
 
-static float s_DirectionalLightRotation[3] = { 0.0f, 30.0f, 0.0f };
-static float s_DirectionalLightColor[3] = { 1.0f, 1.0f, 1.0f };
-static float s_DirectionalLightIntensity = 1.0f;
+static float s_DirectionalLightColor[3] = { 255.0f / 255.0f, 239.0f / 255.0f, 230.0f / 255.0f }; // 5700 kelvin
+static float s_DirectionalLightIntensity = 0.7f;
+
+//////////////////////////////////////////////////////////////////////////
+//                            Material Data                             //
+//////////////////////////////////////////////////////////////////////////
+static float s_MaterialColor[3] = { 1.0f, 1.0f, 1.0f };
+static float s_MaterialSpecularColor[3] = { 0.3f, 0.3f, 0.3f };
+static float s_MaterialRoughness = 0.5f;
 
 //////////////////////////////////////////////////////////////////////////
 //                         Vulkan Debug Layer                           //
@@ -197,6 +202,8 @@ void Renderer::FrameUpdate(float deltaTime)
 	// 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
 	if (ImGui::Begin("Property Panel"))
 	{
+		ImGui::PushItemWidth(150.0f);
+
 		ImGui::Text("deltaTime: %.5f", deltaTime);
 
 		ImGui::Checkbox("Demo Window", &show_demo_window); // Edit bools storing our window open/close state
@@ -204,15 +211,21 @@ void Renderer::FrameUpdate(float deltaTime)
 
 		ImGui::Separator(); // -----------------------------------------------
 
-		ImGui::ColorEdit3("Ambient Color", s_AmbientColor);
-		ImGui::DragFloat("Ambient Intensity", &s_AmbientIntensity, 0.01f);
+		ImGui::ColorEdit3("Ambient Color", s_AmbientLightColor);
+		ImGui::DragFloat("Ambient Intensity", &s_AmbientLightIntensity, 0.01f);
 
-		ImGui::Separator();// -----------------------------------------------
+		ImGui::Separator(); // -----------------------------------------------
 
-		ImGui::DragFloat3("Light Rotation", s_DirectionalLightRotation, 0.1f);
 		ImGui::ColorEdit3("Light Color", s_DirectionalLightColor);
-		ImGui::DragFloat("Light Intensity", &s_DirectionalLightIntensity);
+		ImGui::DragFloat("Light Intensity", &s_DirectionalLightIntensity, 0.01f);
 
+		ImGui::Separator(); // -----------------------------------------------
+
+		ImGui::ColorEdit3("Material Color", s_MaterialColor);
+		ImGui::ColorEdit3("Material Specular Color", s_MaterialSpecularColor);
+		ImGui::DragFloat("Material Roughness", &s_MaterialRoughness, 0.01f, 0.0f, 1.0f);
+
+		ImGui::PopItemWidth();
 		ImGui::End();
 	}
 
@@ -686,6 +699,9 @@ void Renderer::CreateImageViews()
 
 void Renderer::CreateRenderPass()
 {
+	VkFormat depthFormat;
+	::W::VK::GetSupportedDepthFormat(mPhysicalDevice, depthFormat);
+
 	VkAttachmentDescription colorAttachment = {};
 	colorAttachment.format = mSwapChainImageFormat;
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -697,7 +713,7 @@ void Renderer::CreateRenderPass()
 	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	VkAttachmentDescription depthAttachment = {};
-	depthAttachment.format = FindDepthFormat();
+	depthAttachment.format = depthFormat;
 	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -1009,47 +1025,13 @@ void Renderer::CreateCommandPool()
 
 void Renderer::CreateDepthResources()
 {
-	VkFormat depthFormat = FindDepthFormat();
+	VkFormat depthFormat;
+	VK_CHECK(W::VK::GetSupportedDepthFormat(mPhysicalDevice, depthFormat));
 
 	CreateImage(mSwapChainExtent.width, mSwapChainExtent.height, 1, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mDepthImage, mDepthImageMemory);
 	mDepthImageView = CreateImageView(mDepthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 
 	TransitionImageLayout(mDepthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
-}
-
-VkFormat Renderer::FindSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
-{
-	for (VkFormat format : candidates)
-	{
-		VkFormatProperties props;
-		vkGetPhysicalDeviceFormatProperties(mPhysicalDevice, format, &props);
-
-		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
-		{
-			return format;
-		}
-		else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
-		{
-			return format;
-		}
-	}
-
-	Debug_AssertMsg(false, "failed to find supported format!");
-	return VK_FORMAT_UNDEFINED;
-}
-
-VkFormat Renderer::FindDepthFormat()
-{
-	return FindSupportedFormat(
-		{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
-	);
-}
-
-bool Renderer::HasStencilComponent(VkFormat format)
-{
-	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
 void Renderer::CreateTextureImage(Texture * texture)
@@ -1257,7 +1239,8 @@ void Renderer::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayo
 	{
 		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
-		if (HasStencilComponent(format))
+		// Stencil aspect should only be set on depth + stencil formats (VK_FORMAT_D16_UNORM_S8_UINT to VK_FORMAT_D32_SFLOAT_S8_UINT)
+		if (format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT || format == VK_FORMAT_D16_UNORM_S8_UINT)
 		{
 			barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 		}
@@ -1338,7 +1321,7 @@ void Renderer::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width,
 
 void Renderer::LoadScene()
 {
-	mScene = Scene::Load("Data/Scenes/Suzanne.fbx");
+	mScene = Scene::Load("Data/Scenes/StanfordDragon.fbx");
 
 	for (auto& texture : mScene->Textures)
 	{
@@ -1448,8 +1431,7 @@ void Renderer::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemor
 	allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
 
 	VK_CHECK(vkAllocateMemory(mDevice, &allocInfo, nullptr, &bufferMemory));
-
-	vkBindBufferMemory(mDevice, buffer, bufferMemory, 0);
+	VK_CHECK(vkBindBufferMemory(mDevice, buffer, bufferMemory, 0));
 }
 
 VkCommandBuffer Renderer::BeginSingleTimeCommands()
@@ -1531,38 +1513,39 @@ void Renderer::CreateCommandBuffers()
 void Renderer::UpdateUniformBuffer(uint32_t currentImage)
 {
 	static float rotation = 0.0f;
-	static glm::vec3 eyePosition = glm::vec3(5.0f, 5.0f, 5.0f);
+	static glm::vec3 eyePosition(-5.0f, 3.0f, 4.0f);
+	static glm::vec3 lookAtPosition(0.0f, 0.0f, 1.5f);
 
 	constexpr float moveSpeed = 0.05f;
 	constexpr float rotationSpeed = 0.1f;
 
 	GLFWwindow* window = Application::Current().MainWindow();
 
-	int keyState = glfwGetKey(window, GLFW_KEY_W);
-	if (keyState == GLFW_PRESS)
-	{
-		eyePosition.x += moveSpeed;
-	}
+	//int keyState = glfwGetKey(window, GLFW_KEY_W);
+	//if (keyState == GLFW_PRESS)
+	//{
+	//	eyePosition.x += moveSpeed;
+	//}
 
-	keyState = glfwGetKey(window, GLFW_KEY_S);
-	if (keyState == GLFW_PRESS)
-	{
-		eyePosition.x -= moveSpeed;
-	}
+	//keyState = glfwGetKey(window, GLFW_KEY_S);
+	//if (keyState == GLFW_PRESS)
+	//{
+	//	eyePosition.x -= moveSpeed;
+	//}
 
-	keyState = glfwGetKey(window, GLFW_KEY_A);
-	if (keyState == GLFW_PRESS)
-	{
-		eyePosition.z -= moveSpeed;
-	}
+	//keyState = glfwGetKey(window, GLFW_KEY_A);
+	//if (keyState == GLFW_PRESS)
+	//{
+	//	eyePosition.z -= moveSpeed;
+	//}
 
-	keyState = glfwGetKey(window, GLFW_KEY_D);
-	if (keyState == GLFW_PRESS)
-	{
-		eyePosition.z += moveSpeed;
-	}
+	//keyState = glfwGetKey(window, GLFW_KEY_D);
+	//if (keyState == GLFW_PRESS)
+	//{
+	//	eyePosition.z += moveSpeed;
+	//}
 
-	keyState = glfwGetKey(window, GLFW_KEY_Q);
+	int keyState = glfwGetKey(window, GLFW_KEY_Q);
 	if (keyState == GLFW_PRESS)
 	{
 		rotation -= rotationSpeed;
@@ -1576,13 +1559,22 @@ void Renderer::UpdateUniformBuffer(uint32_t currentImage)
 
 	UniformBufferObject ubo = {};
 	ubo.Model = glm::rotate(glm::mat4(1.0f), glm::radians(rotation), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.View = glm::lookAt(eyePosition, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.View = glm::lookAt(eyePosition, lookAtPosition, glm::vec3(0.0f, 0.0f, 1.0f));
 	ubo.Projection = glm::perspective(glm::radians(45.0f), mSwapChainExtent.width / (float)mSwapChainExtent.height, 0.01f, 1000.0f);
 	ubo.Projection[1][1] *= -1.0f;
 
 	ubo.CameraPosition = eyePosition;
-	ubo.AmbientLightColor = (glm::vec3&)s_AmbientColor;
-	ubo.AmbientLightIntensity = s_AmbientIntensity;
+
+	ubo.AmbientLightColor = (glm::vec3&)s_AmbientLightColor;
+	ubo.AmbientLightIntensity = s_AmbientLightIntensity;
+
+	ubo.DirectionalLightColor = (glm::vec3&)s_DirectionalLightColor;
+	ubo.DirectionalLightIntensity = s_DirectionalLightIntensity;
+	ubo.DirectionalLightDirection = lookAtPosition - eyePosition;
+
+	ubo.MaterialColor = (glm::vec3&)s_MaterialColor;
+	ubo.MaterialSpecularColor = (glm::vec3&)s_MaterialSpecularColor;
+	ubo.MaterialRoughness = s_MaterialRoughness;
 
 	void* data;
 	vkMapMemory(mDevice, mUniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);

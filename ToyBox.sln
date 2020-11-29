@@ -7,6 +7,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "MSBuild", "MSBuild", "{BDCE
 	ProjectSection(SolutionItems) = preProject
 		Config\MSBuild\Build.Shader.targets = Config\MSBuild\Build.Shader.targets
 		Config\MSBuild\Common.Cpp.props = Config\MSBuild\Common.Cpp.props
+		Config\MSBuild\Contrib.FBX.Cpp.props = Config\MSBuild\Contrib.FBX.Cpp.props
+		Config\MSBuild\Contrib.GLFW.Cpp.props = Config\MSBuild\Contrib.GLFW.Cpp.props
+		Config\MSBuild\Contrib.GLM.Cpp.props = Config\MSBuild\Contrib.GLM.Cpp.props
+		Config\MSBuild\Contrib.ImGui.Cpp.props = Config\MSBuild\Contrib.ImGui.Cpp.props
+		Config\MSBuild\Contrib.RenderDoc.Cpp.props = Config\MSBuild\Contrib.RenderDoc.Cpp.props
+		Config\MSBuild\Contrib.STB.Cpp.props = Config\MSBuild\Contrib.STB.Cpp.props
+		Config\MSBuild\Contrib.Vulkan.Cpp.props = Config\MSBuild\Contrib.Vulkan.Cpp.props
 		Directory.Build.props = Directory.Build.props
 	EndProjectSection
 EndProject
@@ -23,6 +30,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ToyBox", "Projects\ToyBox\ToyBox.vcxproj", "{22EDA36C-0426-4D43-BBC2-95E16109D755}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnitTest", "Projects\UnitTest\UnitTest.vcxproj", "{CB085075-84F1-4B0C-988A-7E638F78BE80}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Framework.Graphics", "Projects\Framework.Graphics\Framework.Graphics.vcxproj", "{BCA773E3-8F78-41E7-AA71-196872266DAA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -42,6 +51,10 @@ Global
 		{CB085075-84F1-4B0C-988A-7E638F78BE80}.Debug|x64.Build.0 = Debug|x64
 		{CB085075-84F1-4B0C-988A-7E638F78BE80}.Release|x64.ActiveCfg = Release|x64
 		{CB085075-84F1-4B0C-988A-7E638F78BE80}.Release|x64.Build.0 = Release|x64
+		{BCA773E3-8F78-41E7-AA71-196872266DAA}.Debug|x64.ActiveCfg = Debug|x64
+		{BCA773E3-8F78-41E7-AA71-196872266DAA}.Debug|x64.Build.0 = Debug|x64
+		{BCA773E3-8F78-41E7-AA71-196872266DAA}.Release|x64.ActiveCfg = Release|x64
+		{BCA773E3-8F78-41E7-AA71-196872266DAA}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

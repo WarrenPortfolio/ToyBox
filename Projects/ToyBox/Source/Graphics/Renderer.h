@@ -34,12 +34,21 @@ struct SwapChainSupportDetails
 
 struct UniformBufferObject
 {
-	glm::mat4 Model;
-	glm::mat4 View;
-	glm::mat4 Projection;
-	glm::vec3 CameraPosition;
-	float     AmbientLightIntensity;
-	glm::vec3 AmbientLightColor;
+	glm::mat4	Model;
+	glm::mat4	View;
+	glm::mat4	Projection;
+	alignas(16) glm::vec3	CameraPosition;
+
+	float		AmbientLightIntensity;
+	alignas(16)glm::vec3	AmbientLightColor;
+
+	float		DirectionalLightIntensity;
+	alignas(16)glm::vec3	DirectionalLightColor;
+	alignas(16)glm::vec3	DirectionalLightDirection;
+
+	alignas(16)glm::vec3	MaterialColor;
+	alignas(16)glm::vec3	MaterialSpecularColor;
+	float		MaterialRoughness;
 };
 
 class Renderer
@@ -141,11 +150,6 @@ private:
 	void CreateFramebuffers();
 	void CreateCommandPool();
 	void CreateDepthResources();
-
-	VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
-	VkFormat FindDepthFormat();
-
-	bool HasStencilComponent(VkFormat format);
 
 	void CreateTextureImage(Texture* texture);
 	void CreateMaterial(Material* material);
