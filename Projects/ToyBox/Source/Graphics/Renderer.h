@@ -34,21 +34,25 @@ struct SwapChainSupportDetails
 
 struct UniformBufferObject
 {
-	glm::mat4	Model;
-	glm::mat4	View;
-	glm::mat4	Projection;
+	alignas(64) glm::mat4	View;
+	alignas(64) glm::mat4	Projection;
 	alignas(16) glm::vec3	CameraPosition;
 
-	float		AmbientLightIntensity;
-	alignas(16)glm::vec3	AmbientLightColor;
+	alignas(4)  float		AmbientLightIntensity;
+	alignas(16) glm::vec3	AmbientLightColor;
 
-	float		DirectionalLightIntensity;
-	alignas(16)glm::vec3	DirectionalLightColor;
-	alignas(16)glm::vec3	DirectionalLightDirection;
+	alignas(4)  float		DirectionalLightIntensity;
+	alignas(16) glm::vec3	DirectionalLightColor;
+	alignas(16) glm::vec3	DirectionalLightDirection;
 
-	alignas(16)glm::vec3	MaterialColor;
-	alignas(16)glm::vec3	MaterialSpecularColor;
-	float		MaterialRoughness;
+	alignas(16) glm::vec3	MaterialColor;
+	alignas(16) glm::vec3	MaterialSpecularColor;
+	alignas(4)  float		MaterialRoughness;
+};
+
+struct UniformPushConstant
+{
+	alignas(64) glm::mat4	Model;
 };
 
 class Renderer
@@ -98,12 +102,10 @@ private:
 
 	std::unique_ptr<Scene> mScene;
 
-	std::vector<VkBuffer> mUniformBuffers;
-	std::vector<VkDeviceMemory> mUniformBuffersMemory;
+	VkBuffer mUniformBuffers;
+	VkDeviceMemory mUniformBuffersMemory;
 
 	VkDescriptorPool mDescriptorPool;
-
-	std::vector<VkCommandBuffer> mCommandBuffers;
 
 	uint32_t mCurrentFrame = 0;
 	uint32_t imageIndex = 0;
@@ -174,9 +176,8 @@ private:
 	void EndSingleTimeCommands(VkCommandBuffer commandBuffer);
 
 	void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-	void CreateCommandBuffers();
 
-	void UpdateUniformBuffer(uint32_t currentImage);
+	void UpdateUniformBuffer(VkCommandBuffer commandBuffer);
 
 	VkShaderModule CreateShaderModule(const std::vector<char>& code);
 	VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);

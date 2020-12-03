@@ -10,6 +10,17 @@
 
 #include <vulkan\vulkan.h>
 
+struct SceneObject
+{
+	std::string	Name;
+};
+
+struct SceneNode : SceneObject
+{
+	glm::mat4x4 WorldTransform;
+	glm::mat4x4 LocalTransform;
+};
+
 struct Texture
 {
 	static std::unique_ptr<Texture> Load(const char* filePath);
@@ -29,15 +40,13 @@ struct Texture
 	VkSampler TextureSampler;
 };
 
-struct Material
+struct Material : SceneObject
 {
-	std::string Name;
-
 	// CPU DataBlock
-	Texture* DiffuseTexture;
+	Texture* DiffuseTexture = nullptr;
 
 	// GPU DataBlock
-	std::vector<VkDescriptorSet> DescriptorSets;
+	VkDescriptorSet DescriptorSets = VK_NULL_HANDLE;
 };
 
 struct Vertex
@@ -55,9 +64,8 @@ struct Mesh
 	int MaterialIndex = 0;
 };
 
-struct Model
+struct Model : SceneNode
 {
-	std::string	Name;
 	std::vector<Mesh> Meshs;
 
 	// CPU DataBlock
@@ -71,6 +79,11 @@ struct Model
 	VkDeviceMemory IndexBufferMemory;
 };
 
+struct Camera : SceneNode
+{
+	float FieldOfView;
+};
+
 struct Scene
 {
 	static std::unique_ptr<Scene> Load(const char* filePath);
@@ -78,4 +91,5 @@ struct Scene
 	std::vector<std::unique_ptr<Model>> Models;
 	std::vector<std::unique_ptr<Material>> Materials;
 	std::vector<std::unique_ptr<Texture>> Textures;
+	std::vector<std::unique_ptr<Camera>> Cameras;
 };

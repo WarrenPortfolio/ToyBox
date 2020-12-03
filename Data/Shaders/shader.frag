@@ -1,8 +1,8 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(binding = 0) uniform UniformBufferObject {
-    mat4 model;
+layout(std140, binding = 0) uniform UniformBufferObject
+{
     mat4 view;
     mat4 proj;
     vec3 cameraPosition;
@@ -19,6 +19,11 @@ layout(binding = 0) uniform UniformBufferObject {
     float materialRoughness;
 } ubo;
 
+layout(std140, push_constant) uniform UniformPushConstant 
+{
+    mat4 model;
+} upc;
+
 layout(binding = 1) uniform sampler2D texSampler;
 
 layout(location = 0) in vec3 fragPos;
@@ -31,11 +36,10 @@ layout(location = 0) out vec4 outColor;
 void main()
 {
     // diffuse
-    vec4 diffuseColor       = texture(texSampler, fragTexCoord);
-    diffuseColor.xyz        = diffuseColor.xyz * ubo.materialColor;
+    vec4    diffuseColor    = texture(texSampler, fragTexCoord) * vec4(ubo.materialColor, 1.0f);
     
     // normal
-    vec3 normal             = normalize(fragNormal);
+    vec3    normal          = normalize(fragNormal);
 
     // ambient lighting
     vec3    ambientColor    = ubo.ambientLightColor * ubo.ambientLightIntensity;

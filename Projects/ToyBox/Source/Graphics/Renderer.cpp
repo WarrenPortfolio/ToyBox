@@ -118,7 +118,7 @@ void DestroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCallbackEXT
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t location, int32_t code, const char* layerPrefix, const char* msg, void* userData)
 {
-	std::cerr << "validation layer: " << msg << std::endl;
+	std::cerr << msg << "\n\n";
 	return VK_FALSE;
 }
 
@@ -157,17 +157,29 @@ void Renderer::Shutdown()
 		vkFreeMemory(mDevice, texture->TextureImageMemory, nullptr);
 	}
 
+	//for (std::unique_ptr<Material>& material : mScene->Materials)
+	//{
+	//	vkFreeDescriptorSets(mDevice, mDescriptorPool, 1, &material->DescriptorSets);
+	//}
+
+	for (std::unique_ptr<Model>& model : mScene->Models)
+	{
+		vkDestroyBuffer(mDevice, model->VertexBuffer, nullptr);
+		vkFreeMemory(mDevice, model->VertexBufferMemory, nullptr);
+		vkDestroyBuffer(mDevice, model->IndexBuffer, nullptr);
+		vkFreeMemory(mDevice, model->IndexBufferMemory, nullptr);
+	}
+
 	vkDestroyDescriptorPool(mDevice, mDescriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(mDevice, mDescriptorSetLayout, nullptr);
+	vkDestroyDescriptorSetLayout(mDevice, mDescriptorSetLayout2, nullptr);
 
-	for (size_t i = 0; i < mSwapChainImages.size(); i++)
-	{
-		vkDestroyBuffer(mDevice, mUniformBuffers[i], nullptr);
-		vkFreeMemory(mDevice, mUniformBuffersMemory[i], nullptr);
-	}
+	vkDestroyBuffer(mDevice, mUniformBuffers, nullptr);
+	vkFreeMemory(mDevice, mUniformBuffersMemory, nullptr);
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
+		vkFreeCommandBuffers(mDevice, mCommandPool, 1, &mFrameData[i].CommandBuffer);
 		vkDestroySemaphore(mDevice, mFrameData[i].RenderCompleteSemaphore, nullptr);
 		vkDestroySemaphore(mDevice, mFrameData[i].ImageAcquiredSemaphore, nullptr);
 		vkDestroyFence(mDevice, mFrameData[i].Fence, nullptr);
@@ -245,14 +257,11 @@ void Renderer::FrameRender()
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)
 	{
 		RecreateSwapChain();
-		//return;
 	}
 	else
 	{
 		Debug_AssertMsg(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR, "failed to acquire swap chain image!");
 	}
-
-	UpdateUniformBuffer(imageIndex);
 
 	{
 		VkCommandBufferBeginInfo info = {};
@@ -260,6 +269,8 @@ void Renderer::FrameRender()
 		info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 		VK_CHECK(vkBeginCommandBuffer(frameData.CommandBuffer, &info));
 	}
+
+	UpdateUniformBuffer(frameData.CommandBuffer);
 
 	{
 		VkRenderPassBeginInfo info = {};
@@ -288,14 +299,18 @@ void Renderer::FrameRender()
 		vkCmdBindVertexBuffers(frameData.CommandBuffer, 0, 1, vertexBuffers, offsets);
 		vkCmdBindIndexBuffer(frameData.CommandBuffer, model->IndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
+		UniformPushConstant uniformPushConstant = {};
+		uniformPushConstant.Model = model->WorldTransform;
+		vkCmdPushConstants(frameData.CommandBuffer, mPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(UniformPushConstant), &uniformPushConstant);
+
 		for (const Mesh& mesh : model->Meshs)
 		{
 			Material* material = mScene->Materials[mesh.MaterialIndex].get();
-			if (material->DescriptorSets.empty())
+			if (material->DescriptorSets == VK_NULL_HANDLE)
 				continue;
 
 			// set the material for the mesh
-			vkCmdBindDescriptorSets(frameData.CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, 1, &material->DescriptorSets[imageIndex], 0, nullptr);
+			vkCmdBindDescriptorSets(frameData.CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, 1, &material->DescriptorSets, 0, nullptr);
 
 			// draw the mesh's index buffer
 			vkCmdDrawIndexed(frameData.CommandBuffer, static_cast<uint32_t>(mesh.TriangleCount * 3), 1, static_cast<uint32_t>(mesh.IndexOffset), 0, 0);
@@ -457,7 +472,6 @@ void Renderer::InitVulkan()
 	CreateFramebuffers();
 	CreateUniformBuffers();
 	CreateDescriptorPool();
-	CreateCommandBuffers();
 	CreateFrameData();
 }
 
@@ -471,8 +485,6 @@ void Renderer::CleanupSwapChain()
 	{
 		vkDestroyFramebuffer(mDevice, framebuffer, nullptr);
 	}
-
-	vkFreeCommandBuffers(mDevice, mCommandPool, static_cast<uint32_t>(mCommandBuffers.size()), mCommandBuffers.data());
 
 	vkDestroyPipeline(mDevice, mGraphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(mDevice, mPipelineLayout, nullptr);
@@ -506,7 +518,6 @@ void Renderer::RecreateSwapChain()
 	CreateGraphicsPipeline();
 	CreateDepthResources();
 	CreateFramebuffers();
-	CreateCommandBuffers();
 }
 
 void Renderer::CreateInstance()
@@ -798,44 +809,40 @@ void Renderer::CreateMaterial(Material * material)
 	VkDescriptorSetAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	allocInfo.descriptorPool = mDescriptorPool;
-	allocInfo.descriptorSetCount = static_cast<uint32_t>(mSwapChainImages.size());
+	allocInfo.descriptorSetCount = 1;
 	allocInfo.pSetLayouts = layouts.data();
 
-	material->DescriptorSets.resize(mSwapChainImages.size());
-	VK_CHECK(vkAllocateDescriptorSets(mDevice, &allocInfo, &material->DescriptorSets[0]));
+	VK_CHECK(vkAllocateDescriptorSets(mDevice, &allocInfo, &material->DescriptorSets));
 
-	for (size_t i = 0; i < mSwapChainImages.size(); i++)
-	{
-		VkDescriptorBufferInfo bufferInfo = {};
-		bufferInfo.buffer = mUniformBuffers[i];
-		bufferInfo.offset = 0;
-		bufferInfo.range = sizeof(UniformBufferObject);
+	VkDescriptorBufferInfo bufferInfo = {};
+	bufferInfo.buffer = mUniformBuffers;
+	bufferInfo.offset = 0;
+	bufferInfo.range = sizeof(UniformBufferObject);
 
-		VkDescriptorImageInfo imageInfo = {};
-		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = material->DiffuseTexture->TextureImageView;
-		imageInfo.sampler = material->DiffuseTexture->TextureSampler;
+	VkDescriptorImageInfo imageInfo = {};
+	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	imageInfo.imageView = material->DiffuseTexture->TextureImageView;
+	imageInfo.sampler = material->DiffuseTexture->TextureSampler;
 
-		std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
+	std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
 
-		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[0].dstSet = material->DescriptorSets[i];
-		descriptorWrites[0].dstBinding = 0;
-		descriptorWrites[0].dstArrayElement = 0;
-		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptorWrites[0].descriptorCount = 1;
-		descriptorWrites[0].pBufferInfo = &bufferInfo;
+	descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorWrites[0].dstSet = material->DescriptorSets;
+	descriptorWrites[0].dstBinding = 0;
+	descriptorWrites[0].dstArrayElement = 0;
+	descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptorWrites[0].descriptorCount = 1;
+	descriptorWrites[0].pBufferInfo = &bufferInfo;
 
-		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[1].dstSet = material->DescriptorSets[i];
-		descriptorWrites[1].dstBinding = 1;
-		descriptorWrites[1].dstArrayElement = 0;
-		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorWrites[1].descriptorCount = 1;
-		descriptorWrites[1].pImageInfo = &imageInfo;
+	descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorWrites[1].dstSet = material->DescriptorSets;
+	descriptorWrites[1].dstBinding = 1;
+	descriptorWrites[1].dstArrayElement = 0;
+	descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	descriptorWrites[1].descriptorCount = 1;
+	descriptorWrites[1].pImageInfo = &imageInfo;
 
-		vkUpdateDescriptorSets(mDevice, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-	}
+	vkUpdateDescriptorSets(mDevice, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 }
 
 void Renderer::CreateGraphicsPipeline() {
@@ -956,12 +963,19 @@ void Renderer::CreateGraphicsPipeline() {
 	colorBlending.blendConstants[2] = 0.0f;
 	colorBlending.blendConstants[3] = 0.0f;
 
+	VkPushConstantRange pushConstantRange{};
+	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+	pushConstantRange.offset = 0;
+	pushConstantRange.size = sizeof(UniformPushConstant);
+
 	std::array<VkDescriptorSetLayout*, 2> sets = { &mDescriptorSetLayout , &mDescriptorSetLayout2 };
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(sets.size());
 	pipelineLayoutInfo.pSetLayouts = sets.front();
+	pipelineLayoutInfo.pushConstantRangeCount = 1;
+	pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
 	VK_CHECK(vkCreatePipelineLayout(mDevice, &pipelineLayoutInfo, nullptr, &mPipelineLayout));
 
@@ -987,7 +1001,8 @@ void Renderer::CreateGraphicsPipeline() {
 	vkDestroyShaderModule(mDevice, vertShaderModule, nullptr);
 }
 
-void Renderer::CreateFramebuffers() {
+void Renderer::CreateFramebuffers()
+{
 	mSwapChainFramebuffers.resize(mSwapChainImageViews.size());
 
 	for (size_t i = 0; i < mSwapChainImageViews.size(); i++)
@@ -1321,7 +1336,8 @@ void Renderer::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width,
 
 void Renderer::LoadScene()
 {
-	mScene = Scene::Load("Data/Scenes/StanfordDragon.fbx");
+	//mScene = Scene::Load("Data/Scenes/StanfordDragon.fbx");
+	mScene = Scene::Load("Data/Scenes/StudioLighting.fbx");
 
 	for (auto& texture : mScene->Textures)
 	{
@@ -1385,14 +1401,7 @@ void Renderer::CreateIndexBuffer(Model * model)
 void Renderer::CreateUniformBuffers()
 {
 	VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-
-	mUniformBuffers.resize(mSwapChainImages.size());
-	mUniformBuffersMemory.resize(mSwapChainImages.size());
-
-	for (size_t i = 0; i < mSwapChainImages.size(); i++)
-	{
-		CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, mUniformBuffers[i], mUniformBuffersMemory[i]);
-	}
+	CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, mUniformBuffers, mUniformBuffersMemory);
 }
 
 void Renderer::CreateDescriptorPool()
@@ -1497,70 +1506,26 @@ uint32_t Renderer::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags pro
 	return VK_MAX_MEMORY_TYPES;
 }
 
-void Renderer::CreateCommandBuffers()
+void Renderer::UpdateUniformBuffer(VkCommandBuffer commandBuffer)
 {
-	mCommandBuffers.resize(mSwapChainFramebuffers.size());
+	glm::vec3 eyePosition(5.0f, 5.0f, 5.0f);
+	glm::vec3 lookAtPosition(0.0f, 0.0f, 0.0f);
+	glm::vec3 cameraDirection = lookAtPosition - eyePosition;
+	float fieldOfView = 45.0f;
 
-	VkCommandBufferAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.commandPool = mCommandPool;
-	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandBufferCount = (uint32_t)mCommandBuffers.size();
-
-	VK_CHECK(vkAllocateCommandBuffers(mDevice, &allocInfo, mCommandBuffers.data()));
-}
-
-void Renderer::UpdateUniformBuffer(uint32_t currentImage)
-{
-	static float rotation = 0.0f;
-	static glm::vec3 eyePosition(-5.0f, 3.0f, 4.0f);
-	static glm::vec3 lookAtPosition(0.0f, 0.0f, 1.5f);
-
-	constexpr float moveSpeed = 0.05f;
-	constexpr float rotationSpeed = 0.1f;
-
-	GLFWwindow* window = Application::Current().MainWindow();
-
-	//int keyState = glfwGetKey(window, GLFW_KEY_W);
-	//if (keyState == GLFW_PRESS)
-	//{
-	//	eyePosition.x += moveSpeed;
-	//}
-
-	//keyState = glfwGetKey(window, GLFW_KEY_S);
-	//if (keyState == GLFW_PRESS)
-	//{
-	//	eyePosition.x -= moveSpeed;
-	//}
-
-	//keyState = glfwGetKey(window, GLFW_KEY_A);
-	//if (keyState == GLFW_PRESS)
-	//{
-	//	eyePosition.z -= moveSpeed;
-	//}
-
-	//keyState = glfwGetKey(window, GLFW_KEY_D);
-	//if (keyState == GLFW_PRESS)
-	//{
-	//	eyePosition.z += moveSpeed;
-	//}
-
-	int keyState = glfwGetKey(window, GLFW_KEY_Q);
-	if (keyState == GLFW_PRESS)
+	if (!mScene->Cameras.empty())
 	{
-		rotation -= rotationSpeed;
-	}
+		Camera* camera = mScene->Cameras[0].get();
 
-	keyState = glfwGetKey(window, GLFW_KEY_E);
-	if (keyState == GLFW_PRESS)
-	{
-		rotation += rotationSpeed;
+		eyePosition = glm::vec3(camera->WorldTransform[3]);
+		cameraDirection = camera->WorldTransform[0];
+		lookAtPosition = eyePosition + cameraDirection;
+		fieldOfView = camera->FieldOfView;
 	}
 
 	UniformBufferObject ubo = {};
-	ubo.Model = glm::rotate(glm::mat4(1.0f), glm::radians(rotation), glm::vec3(0.0f, 0.0f, 1.0f));
 	ubo.View = glm::lookAt(eyePosition, lookAtPosition, glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.Projection = glm::perspective(glm::radians(45.0f), mSwapChainExtent.width / (float)mSwapChainExtent.height, 0.01f, 1000.0f);
+	ubo.Projection = glm::perspective(glm::radians(fieldOfView), mSwapChainExtent.width / (float)mSwapChainExtent.height, 0.01f, 1000.0f);
 	ubo.Projection[1][1] *= -1.0f;
 
 	ubo.CameraPosition = eyePosition;
@@ -1570,31 +1535,13 @@ void Renderer::UpdateUniformBuffer(uint32_t currentImage)
 
 	ubo.DirectionalLightColor = (glm::vec3&)s_DirectionalLightColor;
 	ubo.DirectionalLightIntensity = s_DirectionalLightIntensity;
-	ubo.DirectionalLightDirection = lookAtPosition - eyePosition;
+	ubo.DirectionalLightDirection = cameraDirection;
 
 	ubo.MaterialColor = (glm::vec3&)s_MaterialColor;
 	ubo.MaterialSpecularColor = (glm::vec3&)s_MaterialSpecularColor;
 	ubo.MaterialRoughness = s_MaterialRoughness;
 
-	void* data;
-	vkMapMemory(mDevice, mUniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
-	memcpy(data, &ubo, sizeof(ubo));
-	vkUnmapMemory(mDevice, mUniformBuffersMemory[currentImage]);
-
-	//static auto startTime = std::chrono::high_resolution_clock::now();
-	//auto currentTime = std::chrono::high_resolution_clock::now();
-	//float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-	//UniformBufferObject ubo = {};
-	//ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(15.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	//ubo.view = glm::lookAt(glm::vec3(10.0f, 100.0f, 10.0f), glm::vec3(0.0f, 100.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	//ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 1.0f, 10000.0f);
-	//ubo.proj[1][1] *= -1;
-
-	//void* data;
-	//vkMapMemory(device, uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
-	//memcpy(data, &ubo, sizeof(ubo));
-	//vkUnmapMemory(device, uniformBuffersMemory[currentImage]);
+	vkCmdUpdateBuffer(commandBuffer, mUniformBuffers, 0, sizeof(UniformBufferObject), &ubo);
 }
 
 VkShaderModule Renderer::CreateShaderModule(const std::vector<char> &code)

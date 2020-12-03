@@ -2,13 +2,12 @@
 
 #include <Framework.Debug/Debug.h>
 
-#include <fbxsdk.h>
 #include <glm/glm.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-#include <stdexcept>
+#include <fbxsdk.h>
 
 static const int TRIANGLE_VERTEX_COUNT = 3;
 
@@ -39,7 +38,33 @@ void Texture::DestroyPixelBuffer()
 //////////////////////////////////////////////////////////////////////////
 //                        Scene - FBX Converter                         //
 //////////////////////////////////////////////////////////////////////////
-static void BuildMaterials(Scene& scene, fbxsdk::FbxScene* fbxScene)
+static glm::vec4 FbxToGlm(const FbxDouble4& in)
+{
+	return glm::vec4(static_cast<float>(in[0]), static_cast<float>(in[1]), static_cast<float>(in[2]), static_cast<float>(in[3]));
+}
+
+static glm::mat4x4 FbxToGlm(const FbxDouble4x4& in)
+{
+	return glm::mat4x4(FbxToGlm(in[0]), FbxToGlm(in[1]), FbxToGlm(in[2]), FbxToGlm(in[3]));
+}
+
+static void UpdateSceneObject(SceneObject& obj, FbxObject* fbxObject)
+{
+	obj.Name = fbxObject->GetName();
+}
+
+static void UpdateSceneNode(SceneNode& obj, FbxNode* fbxNode)
+{
+	UpdateSceneObject(obj, fbxNode);
+
+	FbxAMatrix& globalTransform = fbxNode->EvaluateGlobalTransform();
+	obj.WorldTransform = FbxToGlm(globalTransform);
+
+	FbxAMatrix& localTransform = fbxNode->EvaluateLocalTransform();
+	obj.LocalTransform = FbxToGlm(localTransform);
+}
+
+static void BuildMaterials(Scene& scene, FbxScene* fbxScene)
 {
 	int materialCount = fbxScene->GetMaterialCount();
 	for (int i = 0; i < materialCount; ++i)
@@ -47,7 +72,7 @@ static void BuildMaterials(Scene& scene, fbxsdk::FbxScene* fbxScene)
 		FbxSurfaceMaterial* fbxMaterial = fbxScene->GetMaterial(i);
 
 		std::unique_ptr<Material> material = std::make_unique<Material>();
-		material->Name = fbxMaterial->GetNameOnly();
+		UpdateSceneObject(*material, fbxMaterial);
 
 		const FbxProperty fbxProperty = fbxMaterial->FindProperty(FbxSurfaceMaterial::sDiffuse);
 		if (fbxProperty.IsValid())
@@ -71,10 +96,10 @@ static void BuildMaterials(Scene& scene, fbxsdk::FbxScene* fbxScene)
 	}
 }
 
-static void BuildResources(Scene& scene, fbxsdk::FbxScene* fbxScene, fbxsdk::FbxMesh* fbxMesh)
+static void BuildResources(Scene& scene, FbxScene* fbxScene, FbxNode* fbxNode, FbxMesh* fbxMesh)
 {
 	std::unique_ptr<Model> model = std::make_unique<Model>();
-	model->Name = fbxMesh->GetNode()->GetNameOnly();
+	UpdateSceneNode(*model, fbxNode);
 
 	const int polygonCount = fbxMesh->GetPolygonCount();
 
@@ -277,7 +302,17 @@ static void BuildResources(Scene& scene, fbxsdk::FbxScene* fbxScene, fbxsdk::Fbx
 	scene.Models.push_back(std::move(model));
 }
 
-static void BuildResources(Scene& scene, fbxsdk::FbxScene* fbxScene, FbxNode* fbxNode)
+static void BuildResources(Scene& scene, FbxScene* fbxScene, FbxNode* fbxNode, FbxCamera* fbxCamera)
+{
+	std::unique_ptr<Camera> camera = std::make_unique<Camera>();
+
+	UpdateSceneNode(*camera, fbxNode);
+	camera->FieldOfView = static_cast<float>(fbxCamera->FieldOfView);
+
+	scene.Cameras.push_back(std::move(camera));
+}
+
+static void BuildResources(Scene& scene, FbxScene* fbxScene, FbxNode* fbxNode)
 {
 	FbxNodeAttribute* nodeAttribute = fbxNode->GetNodeAttribute();
 	if (nodeAttribute != nullptr)
@@ -287,7 +322,16 @@ static void BuildResources(Scene& scene, fbxsdk::FbxScene* fbxScene, FbxNode* fb
 			FbxMesh* fbxMesh = fbxNode->GetMesh();
 			if (fbxMesh != nullptr)
 			{
-				BuildResources(scene, fbxScene, fbxMesh);
+				BuildResources(scene, fbxScene, fbxNode, fbxMesh);
+			}
+		}
+
+		if (nodeAttribute->GetAttributeType() == FbxNodeAttribute::eCamera)
+		{
+			FbxCamera* fbxCamera = fbxNode->GetCamera();
+			if (fbxCamera != nullptr)
+			{
+				BuildResources(scene, fbxScene, fbxNode, fbxCamera);
 			}
 		}
 	}
@@ -325,7 +369,7 @@ std::unique_ptr<Scene> Scene::Load(const char* filePath)
 		{
 			// Convert Axis System to desired (Blender), if needed
 			FbxAxisSystem sceneAxisSystem = fbxScene->GetGlobalSettings().GetAxisSystem();
-			FbxAxisSystem desiredAxisSystem(FbxAxisSystem::eZAxis, FbxAxisSystem::eParityEven, FbxAxisSystem::eRightHanded);
+			FbxAxisSystem desiredAxisSystem(FbxAxisSystem::eMayaZUp);
 			if (sceneAxisSystem != desiredAxisSystem)
 			{
 				desiredAxisSystem.ConvertScene(fbxScene);
