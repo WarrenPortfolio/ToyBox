@@ -84,6 +84,29 @@ struct Camera : SceneNode
 	float FieldOfView;
 };
 
+//const int LightType_Directional = 0;
+//const int LightType_Point = 1;
+//const int LightType_Spot = 2;
+//const int LightType_Area = 3;
+
+enum class LightType
+{
+	Directional,
+	Point,
+	Spot,
+	Area,
+	Unknown
+};
+
+struct Light : SceneNode
+{
+	LightType LightType;
+	glm::vec3 Color;
+	float Intensity;
+	float InnerAngle;
+	float OuterAngle;
+};
+
 struct Scene
 {
 	static std::unique_ptr<Scene> Load(const char* filePath);
@@ -92,4 +115,5 @@ struct Scene
 	std::vector<std::unique_ptr<Material>> Materials;
 	std::vector<std::unique_ptr<Texture>> Textures;
 	std::vector<std::unique_ptr<Camera>> Cameras;
+	std::vector<std::unique_ptr<Light>> Lights;
 };

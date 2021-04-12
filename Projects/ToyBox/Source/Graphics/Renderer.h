@@ -34,6 +34,21 @@ struct SwapChainSupportDetails
 
 struct UniformBufferObject
 {
+	struct Light
+	{
+		alignas(16) glm::vec3	Position;
+		alignas(4)  int			Type;
+
+		alignas(16) glm::vec3	Direction;
+		alignas(4)  float		Range;
+
+		alignas(16) glm::vec3	Color;
+		alignas(4)  float		Intensity;
+
+		alignas(4)  float		InnerAngle;
+		alignas(4)  float		OuterAngle;
+	};
+
 	alignas(64) glm::mat4	View;
 	alignas(64) glm::mat4	Projection;
 	alignas(16) glm::vec3	CameraPosition;
@@ -48,6 +63,9 @@ struct UniformBufferObject
 	alignas(16) glm::vec3	MaterialColor;
 	alignas(16) glm::vec3	MaterialSpecularColor;
 	alignas(4)  float		MaterialRoughness;
+
+	alignas(4)  int			LightCount;
+	alignas(16) Light		Lights[8];
 };
 
 struct UniformPushConstant

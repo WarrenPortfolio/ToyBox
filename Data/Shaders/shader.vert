@@ -1,6 +1,26 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
+const int LightType_Directional = 0;
+const int LightType_Point = 1;
+const int LightType_Spot = 2;
+const int LightType_Area = 3;
+
+struct Light
+{
+    vec3  position;
+    int   type;
+
+    vec3  direction;
+    float range;
+          
+    vec3  color;
+    float intensity;
+          
+    float innerAngle;
+    float outerAngle;
+};
+
 layout(std140, binding = 0) uniform UniformBufferObject
 {
     mat4 view;
@@ -17,6 +37,9 @@ layout(std140, binding = 0) uniform UniformBufferObject
     vec3  materialColor;
     vec3  materialSpecularColor;
     float materialRoughness;
+
+    int   lightCount;
+    Light lights[8];
 } ubo;
 
 layout(std140, push_constant) uniform UniformPushConstant 

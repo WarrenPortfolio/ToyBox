@@ -38,6 +38,21 @@ void Texture::DestroyPixelBuffer()
 //////////////////////////////////////////////////////////////////////////
 //                        Scene - FBX Converter                         //
 //////////////////////////////////////////////////////////////////////////
+static glm::vec3 FbxToGlm(const FbxColor& in)
+{
+	return glm::vec3(static_cast<float>(in[0]), static_cast<float>(in[1]), static_cast<float>(in[2]));
+}
+
+static glm::vec2 FbxToGlm(const FbxDouble2& in)
+{
+	return glm::vec2(static_cast<float>(in[0]), static_cast<float>(in[1]));
+}
+
+static glm::vec3 FbxToGlm(const FbxDouble3& in)
+{
+	return glm::vec3(static_cast<float>(in[0]), static_cast<float>(in[1]), static_cast<float>(in[2]));
+}
+
 static glm::vec4 FbxToGlm(const FbxDouble4& in)
 {
 	return glm::vec4(static_cast<float>(in[0]), static_cast<float>(in[1]), static_cast<float>(in[2]), static_cast<float>(in[3]));
@@ -96,43 +111,45 @@ static void BuildMaterials(Scene& scene, FbxScene* fbxScene)
 	}
 }
 
-static void BuildResources(Scene& scene, FbxScene* fbxScene, FbxNode* fbxNode, FbxMesh* fbxMesh)
+static void BuildResource(Scene& scene, FbxScene* fbxScene, FbxNode* fbxNode, FbxMesh* fbxMesh)
 {
 	std::unique_ptr<Model> model = std::make_unique<Model>();
 	UpdateSceneNode(*model, fbxNode);
 
+	fbxMesh->RemoveBadPolygons();
+	fbxMesh->GenerateNormals();
+
+	Debug_Assert(fbxMesh->GetElementMaterial() != nullptr);
+
 	const int polygonCount = fbxMesh->GetPolygonCount();
+	Debug_Assert(polygonCount > 0);
+
+	const int vertexCount = polygonCount * TRIANGLE_VERTEX_COUNT;
 
 	// Count the polygon count of each material
-	FbxLayerElementArrayTemplate<int>* materialIndexArray = NULL;
-	FbxGeometryElement::EMappingMode materialMappingMode = FbxGeometryElement::eNone;
-	if (fbxMesh->GetElementMaterial())
+	FbxLayerElementArrayTemplate<int>* materialIndexArray = &fbxMesh->GetElementMaterial()->GetIndexArray();
+	FbxGeometryElement::EMappingMode materialMappingMode = fbxMesh->GetElementMaterial()->GetMappingMode();
+	if (materialMappingMode == FbxGeometryElement::eByPolygon)
 	{
-		materialIndexArray = &fbxMesh->GetElementMaterial()->GetIndexArray();
-		materialMappingMode = fbxMesh->GetElementMaterial()->GetMappingMode();
-		if (materialMappingMode == FbxGeometryElement::eByPolygon)
-		{
-			if (materialIndexArray->GetCount() == polygonCount)
-			{
-				// Count the faces of each material
-				for (int polygonIndex = 0; polygonIndex < polygonCount; ++polygonIndex)
-				{
-					const size_t materialIndex = materialIndexArray->GetAt(polygonIndex);
-					const size_t requiredMeshSize = materialIndex + 1;
-					if (model->Meshs.size() < requiredMeshSize)
-					{
-						model->Meshs.resize(requiredMeshSize);
-					}
+		Debug_Assert(materialIndexArray->GetCount() == polygonCount);
 
-					model->Meshs[materialIndex].TriangleCount += 1;
-				}
-			}
-		}
-		else if (materialMappingMode == FbxGeometryElement::eAllSame)
+		// Count the faces of each material
+		for (int polygonIndex = 0; polygonIndex < polygonCount; ++polygonIndex)
 		{
-			model->Meshs.resize(1);
-			model->Meshs[0].TriangleCount = polygonCount * TRIANGLE_VERTEX_COUNT;
+			const size_t materialIndex = materialIndexArray->GetAt(polygonIndex);
+			const size_t requiredMeshSize = materialIndex + 1;
+			if (model->Meshs.size() < requiredMeshSize)
+			{
+				model->Meshs.resize(requiredMeshSize);
+			}
+
+			model->Meshs[materialIndex].TriangleCount += 1;
 		}
+	}
+	else if (materialMappingMode == FbxGeometryElement::eAllSame)
+	{
+		model->Meshs.resize(1);
+		model->Meshs[0].TriangleCount = polygonCount;
 	}
 
 	// Initialize the index offset values
@@ -166,8 +183,8 @@ static void BuildResources(Scene& scene, FbxScene* fbxScene, FbxNode* fbxNode, F
 
 			for (int vertexIndex = 0; vertexIndex < TRIANGLE_VERTEX_COUNT; ++vertexIndex)
 			{
-				int controlPointIndex = fbxMesh->GetPolygonVertex(polygonIndex, vertexIndex);
-				model->Indices[polygonIndexOffset + vertexIndex] = static_cast<uint32_t>(controlPointIndex);
+				int polygonVertexIndex = (polygonIndex * TRIANGLE_VERTEX_COUNT) + vertexIndex;
+				model->Indices[polygonIndexOffset + vertexIndex] = static_cast<uint32_t>(polygonVertexIndex);
 			}
 
 			mesh.TriangleCount += 1;
@@ -224,10 +241,7 @@ static void BuildResources(Scene& scene, FbxScene* fbxScene, FbxNode* fbxNode, F
 			vertexColorSet = fbxMesh->GetLayer(0)->GetVertexColors();
 		}
 
-		fbxMesh->GenerateNormals();
-
-		const int controlPointsCount = fbxMesh->GetControlPointsCount();
-		model->Vertices.resize(controlPointsCount);
+		model->Vertices.resize(vertexCount);
 
 		for (int polygonIndex = 0; polygonIndex < polygonCount; ++polygonIndex)
 		{
@@ -236,7 +250,7 @@ static void BuildResources(Scene& scene, FbxScene* fbxScene, FbxNode* fbxNode, F
 				int polygonVertexIndex = (polygonIndex * TRIANGLE_VERTEX_COUNT) + vertexIndex;
 				int index = fbxMesh->GetPolygonVertex(polygonIndex, vertexIndex);
 
-				Vertex& vertex = model->Vertices[index];
+				Vertex& vertex = model->Vertices[polygonVertexIndex];
 
 				// Save the vertex position
 				vertex.Position = glm::vec3(
@@ -245,51 +259,48 @@ static void BuildResources(Scene& scene, FbxScene* fbxScene, FbxNode* fbxNode, F
 					static_cast<float>(controlPoints[index][2])
 				);
 
-				FbxVector4 vertexNormal;
-				if (fbxMesh->GetPolygonVertexNormal(polygonIndex, vertexIndex, vertexNormal))
+				// Save the vertex normal
+				if (normalElement != nullptr)
 				{
-					vertex.Normal = glm::vec3(vertexNormal[0], vertexNormal[1], vertexNormal[2]);
+					int elementIndex = (normalElement->GetMappingMode() == FbxGeometryElement::eByControlPoint) ? index : polygonVertexIndex;
+					if (normalElement->GetReferenceMode() == FbxLayerElement::eIndexToDirect)
+					{
+						elementIndex = normalElement->GetIndexArray().GetAt(elementIndex);
+					}
+
+					FbxVector4 normal = normalElement->GetDirectArray().GetAt(elementIndex);
+					vertex.Normal = FbxToGlm(normal);
 				}
 				else
 				{
 					Debug_AssertMsg(false, "failed to get normal");
 				}
 
-				// Save the UV
+				// Save the vertex UV
 				if (uvElement != nullptr)
 				{
-					int uvIndex = (uvElement->GetMappingMode() == FbxGeometryElement::eByControlPoint)
-						? index
-						: polygonVertexIndex;
-
+					int elementIndex = (uvElement->GetMappingMode() == FbxGeometryElement::eByControlPoint) ? index : polygonVertexIndex;
 					if (uvElement->GetReferenceMode() == FbxLayerElement::eIndexToDirect)
 					{
-						uvIndex = uvElement->GetIndexArray().GetAt(uvIndex);
+						elementIndex = uvElement->GetIndexArray().GetAt(elementIndex);
 					}
 
-					FbxVector2 uv = uvElement->GetDirectArray().GetAt(uvIndex);
-
-					vertex.UV = glm::vec2(
-						static_cast<float>(uv[0]),
-						1.0f - static_cast<float>(uv[1])
-					);
+					FbxVector2 uv = uvElement->GetDirectArray().GetAt(elementIndex);
+					vertex.UV = FbxToGlm(uv);
+					vertex.UV.y = 1.0f - vertex.UV.y; // inverted V
 				}
 
+				// Save the vertex color
 				if (vertexColorSet != nullptr)
 				{
-					int colorIndex = index;
+					int elementIndex = (vertexColorSet->GetMappingMode() == FbxGeometryElement::eByControlPoint) ? index : polygonVertexIndex;
 					if (vertexColorSet->GetReferenceMode() == FbxLayerElement::eIndexToDirect)
 					{
-						colorIndex = vertexColorSet->GetIndexArray().GetAt(index);
+						elementIndex = vertexColorSet->GetIndexArray().GetAt(elementIndex);
 					}
 
-					FbxColor color = vertexColorSet->GetDirectArray().GetAt(colorIndex);
-
-					vertex.Color = glm::vec3(
-						static_cast<float>(color[0]),
-						static_cast<float>(color[1]),
-						static_cast<float>(color[2])
-					);
+					FbxColor color = vertexColorSet->GetDirectArray().GetAt(elementIndex);
+					vertex.Color = FbxToGlm(color);
 				}
 				else
 				{
@@ -302,7 +313,7 @@ static void BuildResources(Scene& scene, FbxScene* fbxScene, FbxNode* fbxNode, F
 	scene.Models.push_back(std::move(model));
 }
 
-static void BuildResources(Scene& scene, FbxScene* fbxScene, FbxNode* fbxNode, FbxCamera* fbxCamera)
+static void BuildResource(Scene& scene, FbxScene* fbxScene, FbxNode* fbxNode, FbxCamera* fbxCamera)
 {
 	std::unique_ptr<Camera> camera = std::make_unique<Camera>();
 
@@ -310,6 +321,48 @@ static void BuildResources(Scene& scene, FbxScene* fbxScene, FbxNode* fbxNode, F
 	camera->FieldOfView = static_cast<float>(fbxCamera->FieldOfView);
 
 	scene.Cameras.push_back(std::move(camera));
+}
+
+static void BuildResource(Scene& scene, FbxScene* fbxScene, FbxNode* fbxNode, FbxLight* fbxLight)
+{
+	FbxLight::EType fbxLightType = fbxLight->LightType.Get();
+
+	LightType lightType = LightType::Unknown;
+	if (fbxLightType == FbxLight::eDirectional) { lightType = LightType::Directional; }
+	else if (fbxLightType == FbxLight::ePoint) { lightType = LightType::Point; }
+	else if (fbxLightType == FbxLight::eSpot) { lightType = LightType::Spot; }
+	else if (fbxLightType == FbxLight::eArea) { lightType = LightType::Area; }
+
+	if (lightType == LightType::Unknown)
+		return;
+
+	std::unique_ptr<Light> light = std::make_unique<Light>();
+
+	UpdateSceneNode(*light, fbxNode);
+	light->LightType = lightType;
+	light->Color = FbxToGlm(fbxLight->Color.Get());
+	light->Intensity = (float)fbxLight->Intensity.Get();
+	light->InnerAngle = (float)fbxLight->InnerAngle.Get();
+	light->OuterAngle = (float)fbxLight->OuterAngle.Get();
+
+	// Area Light Hacks
+	if (light->LightType == LightType::Area)
+	{
+		light->InnerAngle = 45.0f;
+		light->OuterAngle = 135.0;
+	}
+
+	// Note: Blender Lights
+	// The power of sun lights is specified in Watts per square meter.
+	// The power of point lights, spot lights, and area lights is specified in Watts.
+	// But this is not the electrical Watts that consumer light bulbs are rated at.
+	// It is Radiant Flux or Radiant Power which is also measured in Watts.
+	// It is the energy radiated from the light in the form of visible light.
+
+	float power = light->Intensity * 0.01f; // blender fbx export scales this value
+	light->Intensity = power;
+
+	scene.Lights.push_back(std::move(light));
 }
 
 static void BuildResources(Scene& scene, FbxScene* fbxScene, FbxNode* fbxNode)
@@ -322,7 +375,7 @@ static void BuildResources(Scene& scene, FbxScene* fbxScene, FbxNode* fbxNode)
 			FbxMesh* fbxMesh = fbxNode->GetMesh();
 			if (fbxMesh != nullptr)
 			{
-				BuildResources(scene, fbxScene, fbxNode, fbxMesh);
+				BuildResource(scene, fbxScene, fbxNode, fbxMesh);
 			}
 		}
 
@@ -331,7 +384,16 @@ static void BuildResources(Scene& scene, FbxScene* fbxScene, FbxNode* fbxNode)
 			FbxCamera* fbxCamera = fbxNode->GetCamera();
 			if (fbxCamera != nullptr)
 			{
-				BuildResources(scene, fbxScene, fbxNode, fbxCamera);
+				BuildResource(scene, fbxScene, fbxNode, fbxCamera);
+			}
+		}
+
+		if (nodeAttribute->GetAttributeType() == FbxNodeAttribute::eLight)
+		{
+			FbxLight* fbxLight = fbxNode->GetLight();
+			if (fbxLight != nullptr)
+			{
+				BuildResource(scene, fbxScene, fbxNode, fbxLight);
 			}
 		}
 	}

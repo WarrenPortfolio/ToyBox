@@ -238,8 +238,8 @@ void Renderer::FrameUpdate(float deltaTime)
 		ImGui::DragFloat("Material Roughness", &s_MaterialRoughness, 0.01f, 0.0f, 1.0f);
 
 		ImGui::PopItemWidth();
-		ImGui::End();
 	}
+	ImGui::End();
 
 	// Render the Dear ImGui frame
 	ImGui::Render();
@@ -344,7 +344,6 @@ void Renderer::FrameRender()
 void Renderer::FramePresent()
 {
 	FrameData& frameData = mFrameData[mCurrentFrame];
-
 
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -1336,8 +1335,8 @@ void Renderer::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width,
 
 void Renderer::LoadScene()
 {
-	//mScene = Scene::Load("Data/Scenes/StanfordDragon.fbx");
-	mScene = Scene::Load("Data/Scenes/StudioLighting.fbx");
+	mScene = Scene::Load("Data/Scenes/StanfordDragon.fbx");
+	//mScene = Scene::Load("Data/Scenes/StudioLighting.fbx");
 
 	for (auto& texture : mScene->Textures)
 	{
@@ -1358,7 +1357,7 @@ void Renderer::LoadScene()
 
 void Renderer::CreateVertexBuffer(Model * model)
 {
-	VkDeviceSize bufferSize = sizeof(model->Vertices[0]) * model->Vertices.size();
+	VkDeviceSize bufferSize = sizeof(Vertex) * model->Vertices.size();
 
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
@@ -1540,6 +1539,20 @@ void Renderer::UpdateUniformBuffer(VkCommandBuffer commandBuffer)
 	ubo.MaterialColor = (glm::vec3&)s_MaterialColor;
 	ubo.MaterialSpecularColor = (glm::vec3&)s_MaterialSpecularColor;
 	ubo.MaterialRoughness = s_MaterialRoughness;
+
+	ubo.LightCount = (int)mScene->Lights.size();
+	for (int i = 0; i < ubo.LightCount; ++i)
+	{
+		Light* light = mScene->Lights[i].get();
+
+		ubo.Lights[i].Type = (int)light->LightType;
+		ubo.Lights[i].Position = glm::vec3(light->WorldTransform[3][0], light->WorldTransform[3][1], light->WorldTransform[3][2]);
+		ubo.Lights[i].Direction = glm::vec3(0.0f, 0.0f, -1.0f);
+		ubo.Lights[i].Color = light->Color;
+		ubo.Lights[i].Intensity = light->Intensity;
+		ubo.Lights[i].InnerAngle = glm::radians(light->InnerAngle);
+		ubo.Lights[i].OuterAngle = glm::radians(light->OuterAngle);
+	}
 
 	vkCmdUpdateBuffer(commandBuffer, mUniformBuffers, 0, sizeof(UniformBufferObject), &ubo);
 }
